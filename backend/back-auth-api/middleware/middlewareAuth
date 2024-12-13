@@ -1,0 +1,35 @@
+const jwt = require('jsonwebtoken');
+const User = require('../models/user'); // Importa o modelo do usuário
+
+// Middleware para verificar o token JWT e autenticar o usuário
+const authenticate = async (req, res, next) => {
+  // Obtém o token do cabeçalho Authorization
+  const token = req.header('Authorization')?.replace('Bearer ', ''); // 'Bearer ' é removido se presente
+
+  if (!token) {
+    return res.status(401).json({ error: 'Acesso negado. Token não fornecido.' });
+  }
+
+  try {
+    // Verifica e decodifica o token JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Verifica se o usuário existe no banco de dados
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não encontrado.' });
+    }
+
+    // Adiciona o usuário à requisição para uso posterior nas rotas
+    req.user = user;
+    
+    // Chama o próximo middleware ou rota
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ error: 'Token inválido ou expirado.' });
+  }
+};
+
+module.exports = authenticate;
